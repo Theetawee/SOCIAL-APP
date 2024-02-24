@@ -26,7 +26,6 @@ const useLogin = () => {
             router.push('/')
 
         } catch (error) {
-            console.log(error)
             alert('Can\'t process login with provided credentials!' )
         } finally {
             setIsLoading(false)

@@ -4,13 +4,13 @@ import {
     SetStateAction,
     createContext,
     useEffect,
+    useRef,
     useState,
 } from "react";
 import { UserType } from "../hooks/types";
 import * as SecureStore from "expo-secure-store";
 import constants from "@/hooks/constants";
 import axios from "axios";
-import { ActivityIndicator, View } from "react-native";
 import LoadingState from "@/components/LoadingState";
 
 interface AuthContextType {
@@ -18,12 +18,12 @@ interface AuthContextType {
     isAuthenticated: boolean;
     setIsAuthenticated: Dispatch<SetStateAction<boolean>>;
     setUser: Dispatch<SetStateAction<UserType | null>>;
-    setFastRefresh: Dispatch<SetStateAction<boolean>>;
     setAccessToken: Dispatch<SetStateAction<string | null>>;
     accessToken: string | null;
     setRefreshToken: Dispatch<SetStateAction<string | null>>;
     refreshToken: string | null;
     authenticateUser: (user: UserType, access: string, refresh: string) => void;
+    unAuthenticateUser: () => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -31,23 +31,21 @@ export const AuthContext = createContext<AuthContextType>({
     isAuthenticated: false,
     setIsAuthenticated: () => {},
     setUser: () => {},
-    setFastRefresh: () => {},
     setAccessToken: () => {},
     accessToken: null,
     setRefreshToken: () => {},
     refreshToken: null,
-    authenticateUser: () => {},
+    authenticateUser: () => { },
+    unAuthenticateUser: () => {},
 });
 
 const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const [userInfo, setUser] = useState<UserType | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [fastRefresh, setFastRefresh] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState<string | null>(null);
     const { baseUrl } = constants();
-
     const authenticateUser = async (
         user: UserType,
         access: string,
@@ -55,7 +53,6 @@ const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     ) => {
         setIsAuthenticated(true);
         setIsLoading(false);
-        setFastRefresh(false);
         setUser(user);
         setAccessToken(access);
         setRefreshToken(refresh);
@@ -64,14 +61,12 @@ const AuthContextProvider = ({ children }: { children: ReactNode }) => {
             await SecureStore.setItemAsync("access", access);
             await SecureStore.setItemAsync("refresh", refresh);
         } catch (error) {
-            console.log(error);
         }
     };
 
     const unAuthenticateUser = async () => {
         setIsAuthenticated(false);
         setIsLoading(false);
-        setFastRefresh(false);
         setUser(null);
         await SecureStore.deleteItemAsync("user");
         await SecureStore.deleteItemAsync("access");
@@ -80,9 +75,6 @@ const AuthContextProvider = ({ children }: { children: ReactNode }) => {
 
     const api = axios.create({
         baseURL: baseUrl,
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-        },
     });
 
     useEffect(() => {
@@ -102,38 +94,65 @@ const AuthContextProvider = ({ children }: { children: ReactNode }) => {
                 setRefreshToken(null);
             }
         };
+        const getUserInfo=async ()=>{
+            try {
+                const user = await SecureStore.getItemAsync("user");
+                const userInfo:UserType=JSON.parse(user!)
+                setUser(userInfo);
+            } catch {
+                setUser(null);
+            }
+        }
         getAccessToken();
         getRefreshToken();
+        getUserInfo();
+
+
+
     }, []);
 
     useEffect(() => {
-        const refreshTokens = async () => {
-            try {
-                const response = await api.post("/accounts/token/refresh/");
-                const { access } = response.data;
-                setAccessToken(access);
-            } catch (error) {
-                unAuthenticateUser();
-            }
+
+
+            const refreshTokens = async () => {
+                try {
+                    const response = await api.post("/accounts/token/refresh/", {
+                        refresh: refreshToken,
+                    });
+                    const { access } = response.data;
+                    setAccessToken(access);
+                    setIsAuthenticated(true);
+                    setIsLoading(false);
+                    await SecureStore.setItemAsync('access', access)
+                } catch (error) {
+                    unAuthenticateUser();
+                }
         };
-        if (refreshToken) {
+
+           if(refreshToken && accessToken){
+               setIsAuthenticated(true);
+           }
+            if (isAuthenticated) {
             refreshTokens();
-        } else {
+        }
+
+        if (!isAuthenticated && !refreshToken) {
             setIsLoading(false);
         }
-    }, [fastRefresh, refreshToken]);
+
+    }, [refreshToken,isAuthenticated]);
 
     const contextData = {
         isAuthenticated,
         user: userInfo,
         setIsAuthenticated,
         setUser,
-        setFastRefresh,
         setAccessToken,
         accessToken,
         setRefreshToken,
         refreshToken,
         authenticateUser,
+        unAuthenticateUser
     };
 
     return (

@@ -2,9 +2,9 @@ import { PostType } from "@/hooks/types";
 import { View,Image,Text } from "react-native"
 import DefaultAvater from "../assets/images/checkmark.png";
 
-const Tweet = ({ item }: { item: PostType }) => {
+const Tweet = ({ item,index }: { item: PostType,index:number }) => {
   return (
-      <View className="border-b border-gray-300 ">
+      <View  className="border-b w-full border-gray-300 ">
           <View className="p-4">
               <View className="flex flex-row mb-3 items-center gap-x-1">
                   <View>
