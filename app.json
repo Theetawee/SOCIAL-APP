@@ -18,14 +18,16 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-          "usesNonExemptEncryption": false
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.waanverse.www",
+      
     },
     "web": {
       "bundler": "metro",
@@ -38,6 +40,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "50b21260-b831-4522-86dc-1b4c64a3fdb5"
+      }
     }
   }
 }

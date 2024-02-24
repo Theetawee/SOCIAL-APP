@@ -25,7 +25,7 @@ const useAxios = () => {
                 try {
                     // Refresh token
                     const refreshResponse = await fetch(
-                        `${baseUrl}/accounts/token/refresh`,
+                        `${baseUrl}/accounts/token/refresh/`,
                         {
                             method: "POST",
                             headers: {
