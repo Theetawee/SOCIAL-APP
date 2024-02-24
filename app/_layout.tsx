@@ -1,23 +1,17 @@
-import AuthContextProvider from '@/context/AuthContext';
-import useAuth from '@/hooks/Auth/useAuth';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import AuthStack from '@/components/AuthStack';
-import UnAuthStack from '@/components/UnAuthStack';
-
+import AuthContextProvider from "@/context/AuthContext";
+import useAuth from "@/hooks/Auth/useAuth";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Slot } from "expo-router";
 
 function RootLayout() {
-
-  const { isAuthenticated} = useAuth();
-  console.log(isAuthenticated)
+    const { isAuthenticated } = useAuth();
     return (
-
-      <QueryClientProvider client={new QueryClient()}>
-        <AuthContextProvider>
-          {isAuthenticated ? <AuthStack /> : <UnAuthStack />}
-        </AuthContextProvider>
-      </QueryClientProvider>
+        <QueryClientProvider client={new QueryClient()}>
+            <AuthContextProvider>
+                <Slot/>
+            </AuthContextProvider>
+        </QueryClientProvider>
     );
-
 }
 
-export default RootLayout
+export default RootLayout;
