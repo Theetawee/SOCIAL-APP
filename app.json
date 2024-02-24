@@ -26,8 +26,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.waanverse.www",
-      
+      "package": "com.waanverse.www"
+
     },
     "web": {
       "bundler": "metro",
