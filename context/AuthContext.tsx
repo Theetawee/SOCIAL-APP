@@ -1,26 +1,18 @@
-import {
-    Dispatch,
-    ReactNode,
-    SetStateAction,
-    createContext,
-    useEffect,
-    useRef,
-    useState,
-} from "react";
-import { UserType } from "../hooks/types";
+import { createContext, ReactNode, useEffect, useState } from "react";
 import * as SecureStore from "expo-secure-store";
-import constants from "@/hooks/constants";
 import axios from "axios";
 import LoadingState from "@/components/LoadingState";
+import { UserType } from "../hooks/types";
+import constants from "@/hooks/constants";
 
 interface AuthContextType {
     user: UserType | null;
     isAuthenticated: boolean;
-    setIsAuthenticated: Dispatch<SetStateAction<boolean>>;
-    setUser: Dispatch<SetStateAction<UserType | null>>;
-    setAccessToken: Dispatch<SetStateAction<string | null>>;
+    setIsAuthenticated: (value: boolean) => void;
+    setUser: (value: UserType | null) => void;
+    setAccessToken: (value: string | null) => void;
     accessToken: string | null;
-    setRefreshToken: Dispatch<SetStateAction<string | null>>;
+    setRefreshToken: (value: string | null) => void;
     refreshToken: string | null;
     authenticateUser: (user: UserType, access: string, refresh: string) => void;
     unAuthenticateUser: () => void;
@@ -35,114 +27,75 @@ export const AuthContext = createContext<AuthContextType>({
     accessToken: null,
     setRefreshToken: () => {},
     refreshToken: null,
-    authenticateUser: () => { },
+    authenticateUser: () => {},
     unAuthenticateUser: () => {},
 });
 
 const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     const [userInfo, setUser] = useState<UserType | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
     const [accessToken, setAccessToken] = useState<string | null>(null);
     const [refreshToken, setRefreshToken] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const { baseUrl } = constants();
+
     const authenticateUser = async (
         user: UserType,
         access: string,
         refresh: string
     ) => {
-        setIsAuthenticated(true);
-        setIsLoading(false);
-        setUser(user);
-        setAccessToken(access);
-        setRefreshToken(refresh);
         try {
-            await SecureStore.setItemAsync("user", JSON.stringify(user));
-            await SecureStore.setItemAsync("access", access);
-            await SecureStore.setItemAsync("refresh", refresh);
+            const authState = { access, refresh, user };
+            await SecureStore.setItemAsync(
+                "auth_state",
+                JSON.stringify(authState)
+            );
+            setIsAuthenticated(true);
+            setUser(user);
+            setAccessToken(access);
+            setRefreshToken(refresh);
         } catch (error) {
+            console.log("Error while authenticating user:", error);
         }
     };
 
     const unAuthenticateUser = async () => {
+        try {
+            await SecureStore.deleteItemAsync("auth_state");
+        } catch (error) {
+            console.log("Error while unauthenticating user:", error);
+        }
         setIsAuthenticated(false);
-        setIsLoading(false);
         setUser(null);
-        await SecureStore.deleteItemAsync("user");
-        await SecureStore.deleteItemAsync("access");
-        await SecureStore.deleteItemAsync("refresh");
     };
 
-    const api = axios.create({
-        baseURL: baseUrl,
-    });
-
     useEffect(() => {
-        const getAccessToken = async () => {
+        const getAuthState = async () => {
             try {
-                const token = await SecureStore.getItemAsync("access");
-                setAccessToken(token);
-            } catch {
-                setAccessToken(null);
-            }
-        };
-        const getRefreshToken = async () => {
-            try {
-                const token = await SecureStore.getItemAsync("refresh");
-                setRefreshToken(token);
-            } catch {
-                setRefreshToken(null);
-            }
-        };
-        const getUserInfo=async ()=>{
-            try {
-                const user = await SecureStore.getItemAsync("user");
-                const userInfo:UserType=JSON.parse(user!)
-                setUser(userInfo);
-            } catch {
+                const authState = await SecureStore.getItemAsync("auth_state");
+                if (authState) {
+                    const { user, access, refresh } = JSON.parse(authState);
+                    setUser(user);
+                    setAccessToken(access);
+                    setRefreshToken(refresh);
+                    setIsAuthenticated(true);
+                } else {
+                    setAccessToken(null);
+                    setRefreshToken(null);
+                    setIsAuthenticated(false);
+                    setUser(null);
+                }
+            } catch (error) {
+                console.log("Error while getting authentication state:", error);
                 setUser(null);
+            } finally {
+                setIsLoading(false);
             }
-        }
-        getAccessToken();
-        getRefreshToken();
-        getUserInfo();
-
-
-
+        };
+        getAuthState();
     }, []);
 
-    useEffect(() => {
-
-
-            const refreshTokens = async () => {
-                try {
-                    const response = await api.post("/accounts/token/refresh/", {
-                        refresh: refreshToken,
-                    });
-                    const { access } = response.data;
-                    setAccessToken(access);
-                    setIsAuthenticated(true);
-                    setIsLoading(false);
-                    await SecureStore.setItemAsync('access', access)
-                } catch (error) {
-                    unAuthenticateUser();
-                }
-        };
-
-           if(refreshToken && accessToken){
-               setIsAuthenticated(true);
-           }
-            if (isAuthenticated) {
-            refreshTokens();
-        }
-
-        if (!isAuthenticated && !refreshToken) {
-            setIsLoading(false);
-        }
-
-    }, [refreshToken,isAuthenticated]);
-
-    const contextData = {
+    const contextData: AuthContextType = {
         isAuthenticated,
         user: userInfo,
         setIsAuthenticated,
@@ -152,18 +105,12 @@ const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         setRefreshToken,
         refreshToken,
         authenticateUser,
-        unAuthenticateUser
+        unAuthenticateUser,
     };
 
     return (
         <AuthContext.Provider value={contextData}>
-            {isLoading ? (
-                <>
-                    <LoadingState/>
-                </>
-            ) : (
-                <>{children}</>
-            )}
+            {isLoading ? <LoadingState /> : <>{children}</>}
         </AuthContext.Provider>
     );
 };

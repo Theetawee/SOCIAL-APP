@@ -1,11 +1,14 @@
-import { Stack } from "expo-router"
-import { StatusBar } from "expo-status-bar"
+import useAuth from "@/hooks/Auth/useAuth";
+import { Redirect, Stack } from "expo-router";
 
 const _layout = () => {
-  return (<>
-      <Stack/>
-      </>
-  )
-}
+    const { isAuthenticated } = useAuth();
 
-export default _layout
+  if (isAuthenticated) {
+    return <Redirect href={"/"} />;
+  } else {
+    return <Stack />
+  };
+};
+
+export default _layout;

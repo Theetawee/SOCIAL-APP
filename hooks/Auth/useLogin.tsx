@@ -8,7 +8,7 @@ const useLogin = () => {
     const [isLoading,setIsLoading]=useState(false)
     const router = useRouter();
     const { baseUrl} = constants();
-    const {authenticateUser } = useAuth();
+    const {authenticateUser,setIsAuthenticated } = useAuth();
     const api = axios.create({
         baseURL:baseUrl
     })
@@ -21,6 +21,7 @@ const useLogin = () => {
                 email,
                 password
             })
+
             const { access, refresh, user } = response.data
             authenticateUser(user, access, refresh)
             router.push('/')

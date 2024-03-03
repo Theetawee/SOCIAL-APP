@@ -1,10 +1,16 @@
 import axios from "axios";
-import constants from "./constants"; // Assuming this is where you get baseUrl
+import constants from "./constants";
 import useAuth from "./Auth/useAuth";
 import * as SecureStorage from "expo-secure-store";
 
 const useAxios = () => {
-    const { accessToken, setAccessToken, refreshToken,unAuthenticateUser } = useAuth();
+    const {
+        accessToken,
+        setAccessToken,
+        refreshToken,
+        unAuthenticateUser,
+        user,
+    } = useAuth();
     const { baseUrl } = constants();
 
     const axiosInstance = axios.create({
@@ -19,9 +25,12 @@ const useAxios = () => {
     axiosInstance.interceptors.response.use(
         (response) => response,
         async (error) => {
-            const originalRequest = error.config;
-            if (error.response.status === 401 && !originalRequest._retry) {
-                originalRequest._retry = true;
+            if (
+                error.response &&
+                error.response.status === 401 &&
+                !error.config._retry
+            ) {
+                error.config._retry = true;
                 try {
                     // Refresh token
                     const refreshResponse = await fetch(
@@ -38,26 +47,32 @@ const useAxios = () => {
                     );
 
                     if (!refreshResponse.ok) {
-                        unAuthenticateUser();
+                        throw new Error("Failed to refresh token");
                     }
 
                     const { access } = await refreshResponse.json();
-                    // Update accessToken in both the axios instance and state
+                    // Update accessToken in the axios instance header
                     axiosInstance.defaults.headers.common[
                         "Authorization"
                     ] = `Bearer ${access}`;
-                    setAccessToken(access);
-                    SecureStorage.setItemAsync("access", access);
+                    // Update access token in storage
+                    const authState = { access, refresh: refreshToken, user };
+                    await SecureStorage.setItemAsync(
+                        "auth_state",
+                        JSON.stringify(authState)
+                    );
 
                     // Retry original request with new token
-                    originalRequest.headers.Authorization = `Bearer ${access}`;
-                    return axiosInstance(originalRequest);
+                    return axiosInstance(error.config);
                 } catch (refreshError) {
-                    // If refreshing token fails, log the error or handle as needed
                     unAuthenticateUser();
+                    // Handle refresh token failure
+                    console.error("Failed to refresh token:", refreshError);
                     // You may choose to logout or do other error handling here
+                    return Promise.reject(refreshError);
                 }
             }
+            // Handle other errors
             return Promise.reject(error);
         }
     );

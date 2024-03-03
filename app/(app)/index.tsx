@@ -1,14 +1,18 @@
 import Tweet from "@/components/Tweet";
 import Endpoints from "@/hooks/Endpoints";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ActivityIndicator, Button, FlatList, Text, View } from "react-native";
+import { ActivityIndicator, Button, FlatList, Pressable, Text, View } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { PostType } from "@/hooks/types";
+import useAuth from "@/hooks/Auth/useAuth";
 
 
 
 const index = () => {
     const {GetAllPosts } = Endpoints();
+
+    const { unAuthenticateUser} = useAuth();
+
 
     const { data, fetchNextPage, hasNextPage, isPending, isError } =
         useInfiniteQuery({
@@ -34,8 +38,7 @@ const index = () => {
         )
     } else {
 
-console.log(data)
-        return (
+        return (<>
             <FlashList
                 data={posts}
                 renderItem={({
@@ -54,6 +57,12 @@ console.log(data)
                 onEndReachedThreshold={0.1}
                 contentContainerStyle={{paddingVertical: 20}}
             />
+            <View className="p-4">
+                <Pressable onPress={()=>unAuthenticateUser()}><Text>Logout</Text></Pressable>
+                </View>
+
+
+        </>
         );
     }
 };
